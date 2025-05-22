@@ -1,6 +1,6 @@
 module github.com/JustSkiv/goschedviz
 
-go 1.23
+go 1.22
 
 require (
 	github.com/gizak/termui/v3 v3.1.0

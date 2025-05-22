@@ -32,12 +32,20 @@ func main() {
 	var (
 		targetPath = flag.String("target", "", "Path to Go program to monitor")
 		period     = flag.Int("period", 1000, "GODEBUG schedtrace period in milliseconds")
+		showHelp   = flag.Bool("help", false, "Prints usage instructions")
 	)
+	flag.BoolVar(showHelp, "h", false, "Prints usage instructions (alias for -help)")
 
 	flag.Parse()
 
+	if *showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
 	if *targetPath == "" {
 		fmt.Println("Please specify target program path with -target flag")
+		flag.Usage()
 		os.Exit(1)
 	}
 

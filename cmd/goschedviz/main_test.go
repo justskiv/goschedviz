@@ -1,6 +1,9 @@
 package main
 
 import (
+	"os"
+	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -192,6 +195,54 @@ func TestConvertToUIData2(t *testing.T) {
 				assert.Empty(t, result.History.Raw)
 			}
 		})
+	}
+}
+
+func TestMainHelpFlag(t *testing.T) {
+	// Build the goschedviz binary
+	cmdBuild := exec.Command("go", "build", "-o", "goschedviz_test_binary", ".")
+	// Explicitly set the directory for the build command if main_test.go is not in the main package's directory
+	// For example, if main.go is in cmd/goschedviz and main_test.go is also there,
+	// the current directory "." is fine. If main_test.go is in a subdirectory, adjust accordingly.
+	// cmdBuild.Dir = ".." // Or the correct path to the main package
+	err := cmdBuild.Run()
+	if err != nil {
+		t.Fatalf("Failed to build goschedviz binary: %v", err)
+	}
+	defer os.Remove("goschedviz_test_binary") // Clean up the binary after the test
+
+	// Execute the compiled binary with the --help argument
+	cmdRun := exec.Command("./goschedviz_test_binary", "--help")
+	output, err := cmdRun.CombinedOutput() // CombinedOutput captures both stdout and stderr
+
+	// Check if the program exited successfully (status code 0)
+	// For --help, we expect a successful exit.
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		// The program exited with an error code
+		t.Fatalf("Expected exit code 0, but got %d. Output:\n%s", exitErr.ExitCode(), string(output))
+	} else if err != nil {
+		// Another error occurred (e.g., binary not found, though build should prevent this)
+		t.Fatalf("Error running goschedviz with --help: %v. Output:\n%s", err, string(output))
+	}
+
+	// Verify that the output to stdout contains the usage string
+	expectedOutputSubstring := "Usage of ./goschedviz_test_binary:"
+	if !strings.Contains(string(output), expectedOutputSubstring) {
+		t.Errorf("Expected output to contain '%s', but got:\n%s", expectedOutputSubstring, string(output))
+	}
+
+	// Test with -h alias
+	cmdRunAlias := exec.Command("./goschedviz_test_binary", "-h")
+	outputAlias, errAlias := cmdRunAlias.CombinedOutput()
+
+	if exitErr, ok := errAlias.(*exec.ExitError); ok {
+		t.Fatalf("Expected exit code 0 for -h, but got %d. Output:\n%s", exitErr.ExitCode(), string(outputAlias))
+	} else if errAlias != nil {
+		t.Fatalf("Error running goschedviz with -h: %v. Output:\n%s", errAlias, string(outputAlias))
+	}
+
+	if !strings.Contains(string(outputAlias), expectedOutputSubstring) {
+		t.Errorf("Expected output for -h to contain '%s', but got:\n%s", expectedOutputSubstring, string(outputAlias))
 	}
 }
 

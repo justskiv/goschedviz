@@ -45,7 +45,7 @@ func main() {
 
 	if *targetPath == "" {
 		fmt.Println("Please specify target program path with -target flag")
-		flag.Usage()
+		flag.Usage() // Also print usage instructions here
 		os.Exit(1)
 	}
 

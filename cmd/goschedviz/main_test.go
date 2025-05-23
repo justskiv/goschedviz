@@ -199,50 +199,66 @@ func TestConvertToUIData2(t *testing.T) {
 }
 
 func TestMainHelpFlag(t *testing.T) {
+	// Determine a name for the temporary binary
+	// Using a fixed name relative to the test execution directory.
+	// Tests are usually run from the package directory, so "." should refer to cmd/goschedviz
+	const tempBinaryName = "goschedviz_test_binary"
+
 	// Build the goschedviz binary
-	cmdBuild := exec.Command("go", "build", "-o", "goschedviz_test_binary", ".")
-	// Explicitly set the directory for the build command if main_test.go is not in the main package's directory
-	// For example, if main.go is in cmd/goschedviz and main_test.go is also there,
-	// the current directory "." is fine. If main_test.go is in a subdirectory, adjust accordingly.
-	// cmdBuild.Dir = ".." // Or the correct path to the main package
-	err := cmdBuild.Run()
+	// The test will be run from cmd/goschedviz, so "." is the correct path for the package.
+	buildCmd := exec.Command("go", "build", "-o", tempBinaryName, ".")
+	buildOutput, err := buildCmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to build goschedviz binary: %v", err)
+		t.Fatalf("Failed to build goschedviz binary: %v\nOutput:\n%s", err, string(buildOutput))
 	}
-	defer os.Remove("goschedviz_test_binary") // Clean up the binary after the test
+	defer os.Remove(tempBinaryName) // Clean up the binary after the test
 
-	// Execute the compiled binary with the --help argument
-	cmdRun := exec.Command("./goschedviz_test_binary", "--help")
-	output, err := cmdRun.CombinedOutput() // CombinedOutput captures both stdout and stderr
-
-	// Check if the program exited successfully (status code 0)
-	// For --help, we expect a successful exit.
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		// The program exited with an error code
-		t.Fatalf("Expected exit code 0, but got %d. Output:\n%s", exitErr.ExitCode(), string(output))
-	} else if err != nil {
-		// Another error occurred (e.g., binary not found, though build should prevent this)
-		t.Fatalf("Error running goschedviz with --help: %v. Output:\n%s", err, string(output))
+	testCases := []struct {
+		name string
+		arg  string
+	}{
+		{name: "help_long_flag", arg: "--help"},
+		{name: "help_short_flag", arg: "-h"},
 	}
 
-	// Verify that the output to stdout contains the usage string
-	expectedOutputSubstring := "Usage of ./goschedviz_test_binary:"
-	if !strings.Contains(string(output), expectedOutputSubstring) {
-		t.Errorf("Expected output to contain '%s', but got:\n%s", expectedOutputSubstring, string(output))
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Execute the compiled binary with the help argument
+			// Prepend "./" to ensure we run the compiled binary in the current directory
+			runCmd := exec.Command("./"+tempBinaryName, tc.arg)
+			output, err := runCmd.CombinedOutput() // CombinedOutput captures both stdout and stderr
 
-	// Test with -h alias
-	cmdRunAlias := exec.Command("./goschedviz_test_binary", "-h")
-	outputAlias, errAlias := cmdRunAlias.CombinedOutput()
+			// Check if the program exited successfully (status code 0)
+			if err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					t.Fatalf("Expected exit code 0, but got %d. Output:\n%s", exitErr.ExitCode(), string(output))
+				} else {
+					t.Fatalf("Error running goschedviz with %s: %v. Output:\n%s", tc.arg, err, string(output))
+				}
+			}
 
-	if exitErr, ok := errAlias.(*exec.ExitError); ok {
-		t.Fatalf("Expected exit code 0 for -h, but got %d. Output:\n%s", exitErr.ExitCode(), string(outputAlias))
-	} else if errAlias != nil {
-		t.Fatalf("Error running goschedviz with -h: %v. Output:\n%s", errAlias, string(outputAlias))
-	}
+			// Verify stdout content
+			outputStr := string(output)
 
-	if !strings.Contains(string(outputAlias), expectedOutputSubstring) {
-		t.Errorf("Expected output for -h to contain '%s', but got:\n%s", expectedOutputSubstring, string(outputAlias))
+			// 1. Check for "Usage of"
+			// The flag package uses os.Args[0] for the usage message, which will be the path to the binary.
+			expectedUsagePrefix := "Usage of ./" + tempBinaryName
+			if !strings.Contains(outputStr, expectedUsagePrefix) {
+				t.Errorf("Expected output to contain '%s', but got:\n%s", expectedUsagePrefix, outputStr)
+			}
+
+			// 2. Check for -target flag description
+			expectedTargetDesc := "Path to Go program to monitor"
+			if !strings.Contains(outputStr, expectedTargetDesc) {
+				t.Errorf("Expected output to contain description for -target ('%s'), but got:\n%s", expectedTargetDesc, outputStr)
+			}
+
+			// 3. Check for -period flag description
+			expectedPeriodDesc := "GODEBUG schedtrace period in milliseconds"
+			if !strings.Contains(outputStr, expectedPeriodDesc) {
+				t.Errorf("Expected output to contain description for -period ('%s'), but got:\n%s", expectedPeriodDesc, outputStr)
+			}
+		})
 	}
 }
 

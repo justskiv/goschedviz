@@ -1,0 +1,48 @@
+schema: spec-driven
+
+# Project context (shown to AI when creating artifacts).
+context: |
+  Project: goschedviz — a terminal-based visualization tool for the Go
+  runtime scheduler. It runs a target Go program with
+  GODEBUG=schedtrace, parses the emitted scheduler traces, and renders
+  real-time metrics in a terminal UI. Educational tool, not for
+  production.
+
+  Tech stack: Go (modules), terminal UI via github.com/gizak/termui,
+  tests with github.com/stretchr/testify. Build via Makefile (make
+  build/test/clean).
+
+  Architecture (clean layered):
+    - cmd/goschedviz/        CLI entry point and component wiring.
+    - internal/collector/    metrics collection from the target process;
+        godebug/             runs target with GODEBUG=schedtrace, reads
+                             stderr, parses SCHED and PROCMETR lines.
+    - internal/domain/       core types (SchedulerSnapshot, MonitorState,
+                             history of last 60 points).
+    - internal/ui/           presenter abstraction + UIData DTO;
+        termui/              terminal renderer and widgets (table, LRQ
+                             bar chart, gauges, dual history plots,
+                             legend).
+    - pkg/metrics/           embeddable reporter for target programs that
+                             exports goroutine count via the PROCMETR
+                             stderr prefix.
+
+  Key interfaces:
+    - collector.Collector: Start(ctx) <-chan SchedulerSnapshot, Stop().
+    - ui.Presenter: Start(), Stop(), Update(UIData), Done() <-chan{}.
+
+  Conventions:
+    - Idiomatic Go: follow Effective Go and the Uber Go Style Guide.
+    - Run gofmt; keep functions focused; comment non-obvious logic only.
+    - Errors/logs start lowercase, concise.
+    - Commits: Conventional Commits, English subject and body.
+
+  Spec status: this is a brownfield project. The initial change
+  documents the already-implemented system as the baseline; requirements
+  describe current behavior and are marked ADDED.
+
+# Per-artifact rules (optional).
+rules:
+  specs:
+    - Describe observable behavior as already implemented (present tense).
+    - Every requirement needs at least one WHEN/THEN scenario.

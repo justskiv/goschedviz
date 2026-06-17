@@ -9,3 +9,24 @@
 .DS_Store
 *.swp
 *.swo
+
+# Local working dir (notes, reports, scratch docs)
+/local/
+/tmp/
+
+# Agent files and folders
+/AGENTS.md
+/CLAUDE.md
+.claude/
+.codex/
+.cursor/
+.aider*
+
+# Compiled example/CLI binaries and runtime artifacts
+/goschedviz
+/examples/lesson/lesson
+/examples/netpoller/netpoller
+/examples/netpoller-3/netpoller-3
+/examples/netpoller-client-server/client/client
+/examples/netpoller-client-server/server/server
+*.out
